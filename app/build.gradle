@@ -24,7 +24,7 @@ dependencies {
     implementation 'androidx.appcompat:appcompat:1.0.2'
     implementation 'androidx.constraintlayout:constraintlayout:1.1.3'
 
-    implementation fileTree(rootDir.getPath() + "/logger/build/libs/logger-1.0.1-mini.jar")
+    implementation fileTree(rootDir.getPath() + "/logger/build/libs/logger-1.0.2-mini.jar")
 
     testImplementation 'junit:junit:4.12'
     testImplementation 'commons-codec:commons-codec:1.13'
