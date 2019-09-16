@@ -1,0 +1,127 @@
+buildscript {
+    repositories {
+        mavenLocal()
+        maven { url "http://maven.aliyun.com/nexus/content/groups/public/" }
+        mavenCentral()
+        jcenter()
+    }
+
+    dependencies {
+        classpath 'com.github.jengelman.gradle.plugins:shadow:5.1.0'
+        // https://mvnrepository.com/artifact/net.sf.proguard/proguard-gradle
+        classpath 'net.sf.proguard:proguard-gradle:6.1.1'
+
+    }
+}
+
+apply plugin: 'com.github.johnrengelman.shadow'
+apply plugin: 'java'
+
+sourceCompatibility = JavaVersion.VERSION_1_8
+targetCompatibility = JavaVersion.VERSION_1_8
+
+tasks.withType(JavaCompile) {
+    options.encoding = 'UTF-8'
+    options.compilerArgs << "-Xlint:unchecked" << "-Xlint:deprecation"
+}
+
+
+Properties properties = new Properties()
+properties.load(project.rootProject.file('local.properties').newDataInputStream())
+
+
+configurations {
+    shadow
+    implementation2
+    compile.extendsFrom shadow
+    compile.extendsFrom implementation2
+//    providedRuntime
+//    mybatis
+//    mybatis.extendsFrom compile
+}
+
+shadowJar {
+//    relocate 'org.h2', 'com.appunity.repackage.org.h2'
+    configurations = [project.configurations.shadow]
+//    minimize()
+    exclude 'META-INF/maven/**'
+    exclude 'META-INF/services/**'
+    exclude 'META-INF/services/**'
+    exclude 'META-INF/DEPENDENCIES'
+    exclude 'META-INF/LICENSE'
+    exclude 'META-INF/LICENSE.txt'
+    exclude 'META-INF/license.txt'
+    exclude 'META-INF/NOTICE'
+    exclude 'META-INF/NOTICE.txt'
+    exclude 'META-INF/notice.txt'
+    exclude 'META-INF/ASL2.0'
+    exclude 'ch/qos/logback/classic/db/script/**'
+    exclude 'ch/qos/logback/classic/gaffer/**'
+    exclude 'ch/qos/logback/classic/jmx/**'
+    exclude 'ch/qos/logback/classic/servlet/**'
+    exclude 'ch/qos/logback/classic/selector/servlet/**'
+    exclude 'ch/qos/logback/classic/db/**'
+    exclude 'ch/qos/logback/core/db/**'
+    exclude 'ch/qos/logback/classic/net/**'
+    exclude 'ch/qos/logback/core/net/**'
+    exclude 'ch/qos/logback/classic/joran/**'
+    exclude 'ch/qos/logback/classic/BasicConfigurator.*'
+}
+
+dependencies {
+    shadow "org.slf4j:slf4j-api:$slf4jVersion"
+
+    // https://mvnrepository.com/artifact/org.slf4j/slf4j-api
+//    shade "com.arcao:slf4j-timber:3.1"
+//    api 'com.github.tony19:logback-android:2.0.0'
+
+    shadow "ch.qos.logback:logback-classic:1.2.3"
+
+//    implementation2 'commons-codec:commons-codec:1.13'
+
+    // https://mvnrepository.com/artifact/com.google.android/android
+    compileOnly files(properties.getProperty("sdk.dir") + "/platforms/android-28/android.jar")
+}
+
+tasks.getByName("shadowJar").doLast {
+    File file = new File(project.buildDir, "libs/logger.jar")
+    file.delete()
+
+}
+
+task proguard(type: proguard.gradle.ProGuardTask, dependsOn: shadowJar) {
+
+
+    // 输出混淆前->混淆后的映射
+    printmapping "$buildDir/mapping.txt"
+    // 列出从 JAR 移除的代码。
+    printusage "$buildDir/usage.txt"
+    // 列出未进行混淆的类和成员。
+    printseeds "$buildDir/seeds.txt"
+    // 所有类文件的内部结构。
+    dump "$buildDir/dump.txt"
+
+    // 混淆规则文件
+    configuration 'proguard-rules.pro'
+
+    // You should probably import a more compact ProGuard-style configuration
+    // file for all static settings, but we're specifying them all here, for
+    // the sake of the example.
+    //configuration 'configuration.pro'
+
+    // Specify the input jars, output jars, and library jars.
+    // In this case, the input jar is the program library that we want to process.
+
+    libraryjars configurations.implementation2.findAll()
+    libraryjars configurations.compileOnly.findAll()
+
+    libraryjars "D:/Programs/Java/java-1.8.0-openjdk-1.8.0.212-3.b04.redhat.windows.x86_64/jre/lib/rt.jar"
+
+    // Save the obfuscation mapping to a file, so we can de-obfuscate any stack
+    // traces later on. Keep a fixed source file attribute and all line number
+    // tables to get line numbers in the stack traces.
+    // You can comment this out if you're not interested in stack traces.
+
+    injars "${project.buildDir}/libs/logger-all.jar"
+    outjars "${project.buildDir}/libs/logger-mini.jar"
+}
