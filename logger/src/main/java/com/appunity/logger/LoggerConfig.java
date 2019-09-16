@@ -54,21 +54,45 @@ public class LoggerConfig {
     public static final String PATTERN = "%d{yyyy-MM-dd HH:mm:ss.SSS} %5p --- [%t] %-40.40logger{39}- %msg%n";
     //    public static final String PATTERN = "%msg";
 
+    /**
+     * 配置logback for android.
+     *
+     * @param logDir    日志文件目录,如果为空或者null则关闭文件输出
+     * @param secretKey 日志加密key，如果为null,则使用非加密输出
+     */
     public static void configure(String logDir, SecretKey secretKey) {
+        configure(false, logDir, secretKey);
+    }
+
+    /**
+     * 配置logback for android.
+     *
+     * @param logcat    是否logcat输出
+     * @param logDir    日志文件目录,如果为空或者null则关闭文件输出
+     * @param secretKey 日志加密key，如果为null,则使用非加密输出
+     */
+    public static void configure(boolean logcat, String logDir, SecretKey secretKey) {
 
         // assume SLF4J is bound to logback in the current environment
         LoggerContext loggerContext = (LoggerContext) LoggerFactory.getILoggerFactory();
 
         Logger rootLogger = loggerContext.getLogger(Logger.ROOT_LOGGER_NAME);
 
-        if (isDalvikVm()) {
+        if (isDalvikVm() && logcat) {
             loggerContext.reset();
             LogcatAppender logcatAppender = createLogcatAppender(loggerContext);
             rootLogger.addAppender(logcatAppender);
         }
 
-        RollingFileAppender<ILoggingEvent> rollingFileAppender = createCipherFileAppender(loggerContext, logDir, secretKey);
-        rootLogger.addAppender(rollingFileAppender);
+        if (logDir != null && logDir.length() > 0) {
+            RollingFileAppender<ILoggingEvent> rollingFileAppender;
+            if (secretKey != null) {
+                rollingFileAppender = createCipherFileAppender(loggerContext, logDir, secretKey);
+            } else {
+                rollingFileAppender = createFileAppender(loggerContext, logDir);
+            }
+            rootLogger.addAppender(rollingFileAppender);
+        }
     }
 
     private static boolean isDalvikVm() {

@@ -10,12 +10,52 @@ buildscript {
         classpath 'com.github.jengelman.gradle.plugins:shadow:5.1.0'
         // https://mvnrepository.com/artifact/net.sf.proguard/proguard-gradle
         classpath 'net.sf.proguard:proguard-gradle:6.1.1'
+        classpath "com.jfrog.bintray.gradle:gradle-bintray-plugin:1.8.4"
 
     }
 }
 
 apply plugin: 'com.github.johnrengelman.shadow'
 apply plugin: 'java'
+apply plugin: 'maven-publish'
+apply plugin: "com.jfrog.bintray"
+
+group project.publish_group_id
+version project.publish_version
+
+
+publishing {
+    repositories {
+        maven {
+            url = "$buildDir/repos/"
+        }
+    }
+    publications {
+        MyPublication(MavenPublication) {
+            groupId = project.publish_group_id
+            artifactId = project.publish_artifact_id
+            artifact "${project.buildDir}/libs/logger-$project.publish_version-mini.jar"
+        }
+    }
+}
+
+bintray {
+    user = System.getenv('BINTRAY_USER')
+    key = System.getenv('BINTRAY_KEY')
+
+    pkg {
+        repo = 'maven'
+        name = project.publish_artifact_id
+        userOrg = System.getenv('BINTRAY_USER')
+        licenses = ['Apache-2.0']
+        vcsUrl = 'https://github.com/zawn/logback-lite.git'
+        version {
+            name = project.publish_version
+        }
+    }
+    publications = ['MyPublication']
+}
+
 
 sourceCompatibility = JavaVersion.VERSION_1_8
 targetCompatibility = JavaVersion.VERSION_1_8
@@ -32,9 +72,7 @@ properties.load(project.rootProject.file('local.properties').newDataInputStream(
 
 configurations {
     shadow
-    implementation2
     compile.extendsFrom shadow
-    compile.extendsFrom implementation2
 //    providedRuntime
 //    mybatis
 //    mybatis.extendsFrom compile
@@ -112,7 +150,7 @@ task proguard(type: proguard.gradle.ProGuardTask, dependsOn: shadowJar) {
     // Specify the input jars, output jars, and library jars.
     // In this case, the input jar is the program library that we want to process.
 
-    libraryjars configurations.implementation2.findAll()
+//    libraryjars configurations.implementation2.findAll()
     libraryjars configurations.compileOnly.findAll()
 
     libraryjars "D:/Programs/Java/java-1.8.0-openjdk-1.8.0.212-3.b04.redhat.windows.x86_64/jre/lib/rt.jar"
@@ -122,6 +160,7 @@ task proguard(type: proguard.gradle.ProGuardTask, dependsOn: shadowJar) {
     // tables to get line numbers in the stack traces.
     // You can comment this out if you're not interested in stack traces.
 
-    injars "${project.buildDir}/libs/logger-all.jar"
-    outjars "${project.buildDir}/libs/logger-mini.jar"
+    injars "${project.buildDir}/libs/logger-$project.publish_version-all.jar"
+
+    outjars "${project.buildDir}/libs/logger-$project.publish_version-mini.jar"
 }
