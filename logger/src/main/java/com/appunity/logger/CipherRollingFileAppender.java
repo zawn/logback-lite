@@ -17,7 +17,7 @@ import ch.qos.logback.core.rolling.RollingFileAppender;
  * 使用简单的DES对称加密算法进行日志流进行加密输出.
  * <br/>加密算法:
  * <br/>&nbsp;&nbsp;DES/ECB/NoPadding
- * <br/>填充方式如PKCS5Padding并不适合日志输出，且可能导致输出意外终端后无法解码
+ * <br/>填充方式如PKCS5Padding并不适合日志输出，且可能导致输出意外中断后无法解码
  * 或者数据丢失
  *
  * @param <E>
