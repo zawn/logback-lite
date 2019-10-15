@@ -104,6 +104,7 @@ shadowJar {
     exclude 'ch/qos/logback/core/net/**'
     exclude 'ch/qos/logback/classic/joran/**'
     exclude 'ch/qos/logback/classic/BasicConfigurator.*'
+    exclude 'ch/qos/logback/classic/boolex/*.groovy'
 }
 
 dependencies {

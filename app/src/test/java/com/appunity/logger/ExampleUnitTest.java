@@ -1,7 +1,6 @@
 package com.appunity.logger;
 
 import org.apache.commons.codec.binary.Base64;
-import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.io.IOUtils;
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -130,15 +129,18 @@ public class ExampleUnitTest {
 
     @Test
     public void decrypt2() throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidKeyException, IOException {
-        File logFile = new File("D:/logtest/log.bin");
+        String logdir = "D:/logtest";
+        logdir = "C:\\Users\\zhang\\logs";
+        File logFile = new File(logdir + "/log.bin");
         if (logFile.exists()) {
             String password = "liFkRAy9Vqg=";
+            password = "1NIcvjUYiTQ=";
             byte[] keyBytes = Base64.decodeBase64(password);
             System.out.println(HexDump.dumpHexString(keyBytes));
             final Cipher cipher = Cipher.getInstance("DES/ECB/NoPadding");
             cipher.init(Cipher.DECRYPT_MODE, new SecretKeySpec(keyBytes, "DES"));
             CipherInputStream cipherInputStream = new CipherInputStream(new FileInputStream(logFile), cipher);
-            BufferedWriter bufferedWriter = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(new File("D:/logtest/log.dec.log"))));
+            BufferedWriter bufferedWriter = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(new File(logdir + "/log.dec.log"))));
             BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(cipherInputStream));
             String line = bufferedReader.readLine();
             while (line != null) {
@@ -285,7 +287,7 @@ public class ExampleUnitTest {
 
     @Test
     public void generateKey() {
-        System.out.println(deriveKeySecurely("zhang", 8));
+        System.out.println(deriveKeySecurely("saicmotor", 8));
         System.out.println(deriveKeySecurely("zhang", 8));
         System.out.println(deriveKeySecurely("zhang", 16));
         System.out.println(deriveKeySecurely("zhang", 16));
@@ -313,7 +315,7 @@ public class ExampleUnitTest {
         byte[] salt = new byte[KEY_SIZE];
         // Create a random salt if encrypting for the first time, and save it for future use.
         readFromFileOrCreateRandom("salt", salt);
-        System.out.println("ExampleUnitTest.retrieveSalt"+ HexDump.dumpHexString(salt));
+        System.out.println("ExampleUnitTest.retrieveSalt" + HexDump.dumpHexString(salt));
         return salt;
     }
 

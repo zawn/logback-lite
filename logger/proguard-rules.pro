@@ -42,3 +42,7 @@
 -assumenosideeffects class ch.qos.logback.classic.util.ContextInitializer {
     public void autoConfig();
 }
+
+-assumenosideeffects class ch.qos.logback.classic.selector.ContextJNDISelector {
+    *** getLoggerContext();
+}
