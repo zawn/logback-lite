@@ -19,6 +19,12 @@ dependencies {
 
 Build
 -----
+
+JDK 1.8
+
+Gradle 5.4
+
+
 Use these commands to create the AAR:
 
     git clone https://github.com/zawn/logback-lite.git
