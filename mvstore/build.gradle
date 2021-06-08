@@ -19,13 +19,6 @@ apply plugin: 'com.github.johnrengelman.shadow'
 apply plugin: 'java'
 apply plugin: 'maven-publish'
 
-group project.publish_group_id
-version project.publish_version
-
-
-publishing {
-
-}
 
 group project.publish_group_id
 version project.publish_version
@@ -138,7 +131,6 @@ dependencies {
 tasks.getByName("shadowJar").doLast {
     File file = new File(project.buildDir, "libs/logger.jar")
     file.delete()
-
 }
 
 // task responsible to create the tmp/work dir
@@ -182,9 +174,9 @@ task proguard(type: proguard.gradle.ProGuardTask, dependsOn: shadowJar) {
     // tables to get line numbers in the stack traces.
     // You can comment this out if you're not interested in stack traces.
 
-    injars "${project.buildDir}/libs/mvstore-$project.publish_version-all.jar"
+    injars "${project.buildDir}/libs/$project.publish_artifact_id-$project.publish_version-all.jar"
 
-    outjars "${project.buildDir}/libs/mvstore-$project.publish_version-mini.jar"
+    outjars "${project.buildDir}/libs/$project.publish_artifact_id-$project.publish_version-mini.jar"
 }
 
 def copyReport = tasks.register('copyReport', Copy) {
