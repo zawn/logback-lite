@@ -8,7 +8,7 @@
     
     ```````
     
-3.  edit build.gradle(line 130) file in this module, fill in your actual jar path.
+3.  edit build.gradle(line 130) file in this module, fill in your actual h2-mvstore jar path.
 
 4.  run gradle task 'proguard' ,and you can also use the 'publish' task to publish jar 
 
