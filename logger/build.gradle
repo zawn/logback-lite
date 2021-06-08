@@ -19,21 +19,39 @@ apply plugin: 'com.github.johnrengelman.shadow'
 apply plugin: 'java'
 apply plugin: 'maven-publish'
 
+
 group project.publish_group_id
 version project.publish_version
 
+def localReleaseDest = "${project.getRootDir()}/repo"
 
+def isUploadRemoteMaven() {
+    return hasProperty('publish_is_upload_remote') ? publish_is_upload_remote.toBoolean() : false
+}
 publishing {
     repositories {
         maven {
-            url = "$buildDir/repos/"
+            url = localReleaseDest
+
+            if (isUploadRemoteMaven()) {
+                credentials {
+                    username project.nexus_username
+                    password project.nexus_password
+                }
+                def releasesRepoUrl = project.release_repository_url
+                def snapshotsRepoUrl = project.snapshot_repository_url
+                url = version.endsWith('SNAPSHOT') ? snapshotsRepoUrl : releasesRepoUrl
+            }
+
         }
     }
+
     publications {
         MyPublication(MavenPublication) {
             groupId = project.publish_group_id
             artifactId = project.publish_artifact_id
-            artifact "${project.buildDir}/libs/logger-$project.publish_version-mini.jar"
+            artifact "${project.buildDir}/libs/$publish_artifact_id-$project.publish_version-mini.jar"
+            artifact "${project.buildDir}/dist/proguard.zip"
         }
     }
 }
@@ -54,13 +72,15 @@ properties.load(project.rootProject.file('local.properties').newDataInputStream(
 
 configurations {
     shadow
-    compile.extendsFrom shadow
-//    providedRuntime
+//    compile.extendsFrom shadow
+    providedRuntime.extendsFrom implementation
+//    providedRuntime.exclude()
 //    mybatis
 //    mybatis.extendsFrom compile
 }
 
 shadowJar {
+    archiveBaseName.set("$project.publish_artifact_id")
 //    relocate 'org.h2', 'com.appunity.repackage.org.h2'
     configurations = [project.configurations.shadow]
 //    minimize()
@@ -90,13 +110,15 @@ shadowJar {
 }
 
 dependencies {
-    shadow "org.slf4j:slf4j-api:$slf4jVersion"
+    implementation "org.slf4j:slf4j-api:$slf4jVersion"
 
     // https://mvnrepository.com/artifact/org.slf4j/slf4j-api
 //    shade "com.arcao:slf4j-timber:3.1"
 //    api 'com.github.tony19:logback-android:2.0.0'
 
-    shadow "ch.qos.logback:logback-classic:1.2.3"
+    shadow ("ch.qos.logback:logback-classic:1.2.3"){
+        exclude group: 'org.slf4j'
+    }
 
 //    implementation2 'commons-codec:commons-codec:1.13'
 
@@ -107,20 +129,25 @@ dependencies {
 tasks.getByName("shadowJar").doLast {
     File file = new File(project.buildDir, "libs/logger.jar")
     file.delete()
+}
 
+// task responsible to create the tmp/work dir
+task prepareDirs {
+    mustRunAfter clean
+    doLast {
+        mkdir "$buildDir/proguard"
+    }
 }
 
 task proguard(type: proguard.gradle.ProGuardTask, dependsOn: shadowJar) {
-
-
     // 输出混淆前->混淆后的映射
-    printmapping "$buildDir/mapping.txt"
+    printmapping "$buildDir/proguard/mapping.txt"
     // 列出从 JAR 移除的代码。
-    printusage "$buildDir/usage.txt"
+    printusage "$buildDir/proguard/usage.txt"
     // 列出未进行混淆的类和成员。
-    printseeds "$buildDir/seeds.txt"
+    printseeds "$buildDir/proguard/seeds.txt"
     // 所有类文件的内部结构。
-    dump "$buildDir/dump.txt"
+    dump "$buildDir/proguard/dump.txt"
 
     // 混淆规则文件
     configuration 'proguard-rules.pro'
@@ -133,18 +160,36 @@ task proguard(type: proguard.gradle.ProGuardTask, dependsOn: shadowJar) {
     // Specify the input jars, output jars, and library jars.
     // In this case, the input jar is the program library that we want to process.
 
-//    libraryjars configurations.implementation2.findAll()
-//    libraryjars properties.getProperty("sdk.dir") + "/platforms/android-29/android.jar"
+    println configurations.providedRuntime.findAll()
+
+    libraryjars configurations.providedRuntime.findAll()
+    libraryjars properties.getProperty("sdk.dir") + "/platforms/android-29/android.jar"
     println org.gradle.internal.jvm.Jvm.current().getJavaHome().getPath() +"/jre/lib/rt.jar"
 
-    libraryjars org.gradle.internal.jvm.Jvm.current().getJavaHome().getPath() +"/jre/lib/rt.jar"
+//    libraryjars org.gradle.internal.jvm.Jvm.current().getJavaHome().getPath() +"/jre/lib/rt.jar"
 
     // Save the obfuscation mapping to a file, so we can de-obfuscate any stack
     // traces later on. Keep a fixed source file attribute and all line number
     // tables to get line numbers in the stack traces.
     // You can comment this out if you're not interested in stack traces.
 
-    injars "${project.buildDir}/libs/logger-$project.publish_version-all.jar"
+    injars "${project.buildDir}/libs/$project.publish_artifact_id-$project.publish_version-all.jar"
 
-    outjars "${project.buildDir}/libs/logger-$project.publish_version-mini.jar"
+    outjars "${project.buildDir}/libs/$project.publish_artifact_id-$project.publish_version-mini.jar"
 }
+
+def copyReport = tasks.register('copyReport', Copy) {
+    from layout.projectDirectory.dir("proguard-rules.pro")
+    into layout.buildDirectory.dir("proguard")
+}
+
+def proguardDistribution = tasks.register('proguardDistribution', Zip) {
+    dependsOn copyReport,proguard
+    archiveFileName = "proguard.zip"
+    destinationDirectory = layout.buildDirectory.dir('dist')
+
+    from layout.buildDirectory.dir("proguard")
+}
+
+proguard.dependsOn prepareDirs
+tasks.findByName("publishMyPublicationPublicationToMavenRepository").dependsOn proguardDistribution

@@ -10,12 +10,14 @@
 -keep class com.appunity.logger.** {*;}
 -keep class org.slf4j.LoggerFactory { *; }
 -keep class org.slf4j.Logger { *; }
+-keep class org.slf4j.impl.**  { *; }
 -keep class ch.qos.logback.classic.Logger { public synchronized void addAppender(...); }
 -keep class ch.qos.logback.core.rolling.TimeBasedRollingPolicy { *; }
 -keep class ch.qos.logback.core.rolling.ContextAwareBase { *; }
 #-keep class ** {*;}
 
 
+-dontwarn sun.reflect.Reflection
 -dontwarn javax.servlet.**
 -dontwarn javax.naming.**
 -dontwarn javax.jms.**
