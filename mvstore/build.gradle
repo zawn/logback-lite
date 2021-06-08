@@ -24,16 +24,41 @@ version project.publish_version
 
 
 publishing {
+
+}
+
+group project.publish_group_id
+version project.publish_version
+
+def localReleaseDest = "${project.getRootDir()}/repo"
+
+def isUploadRemoteMaven() {
+    return hasProperty('publish_is_upload_remote') ? publish_is_upload_remote.toBoolean() : false
+}
+publishing {
     repositories {
         maven {
-            url = "$buildDir/repos/"
+            url = localReleaseDest
+
+            if (isUploadRemoteMaven()) {
+                credentials {
+                    username project.nexus_username
+                    password project.nexus_password
+                }
+                def releasesRepoUrl = project.release_repository_url
+                def snapshotsRepoUrl = project.snapshot_repository_url
+                url = version.endsWith('SNAPSHOT') ? snapshotsRepoUrl : releasesRepoUrl
+            }
+
         }
     }
+
     publications {
         MyPublication(MavenPublication) {
             groupId = project.publish_group_id
             artifactId = project.publish_artifact_id
-            artifact "${project.buildDir}/libs/logger-$project.publish_version-mini.jar"
+            artifact "${project.buildDir}/libs/mvstore-$project.publish_version-mini.jar"
+            artifact "${project.buildDir}/dist/proguard.zip"
         }
     }
 }
@@ -63,6 +88,9 @@ configurations {
 shadowJar {
 //    relocate 'org.h2', 'com.appunity.repackage.org.h2'
     configurations = [project.configurations.shadow]
+
+    exclude 'META-INF/versions/**'
+
 //    minimize()
     exclude 'META-INF/maven/**'
     exclude 'META-INF/services/**'
@@ -97,12 +125,14 @@ dependencies {
 //    api 'com.github.tony19:logback-android:2.0.0'
 
 //    shadow "ch.qos.logback:logback-classic:1.2.3"
-    shadow "com.appunity:h2-mvstore:1.4.200"
+//    shadow "com.appunity:h2-mvstore:1.4.200"
+    //  /Users/zhangzhenli/Github/h2database/h2/bin/h2-mvstore-1.4.200.jar
+    shadow files("/Users/zhangzhenli/Github/h2database/h2/bin/h2-mvstore-1.4.200.jar")
 
 //    implementation2 'commons-codec:commons-codec:1.13'
 
     // https://mvnrepository.com/artifact/com.google.android/android
-    compileOnly files(properties.getProperty("sdk.dir") + "/platforms/android-29/android.jar")
+//    compileOnly files(properties.getProperty("sdk.dir") + "/platforms/android-29/android.jar")
 }
 
 tasks.getByName("shadowJar").doLast {
@@ -111,17 +141,23 @@ tasks.getByName("shadowJar").doLast {
 
 }
 
+// task responsible to create the tmp/work dir
+task prepareDirs {
+    mustRunAfter clean
+    doLast {
+        mkdir "$buildDir/proguard"
+    }
+}
+
 task proguard(type: proguard.gradle.ProGuardTask, dependsOn: shadowJar) {
-
-
     // 输出混淆前->混淆后的映射
-    printmapping "$buildDir/mapping.txt"
+    printmapping "$buildDir/proguard/mapping.txt"
     // 列出从 JAR 移除的代码。
-    printusage "$buildDir/usage.txt"
+    printusage "$buildDir/proguard/usage.txt"
     // 列出未进行混淆的类和成员。
-    printseeds "$buildDir/seeds.txt"
+    printseeds "$buildDir/proguard/seeds.txt"
     // 所有类文件的内部结构。
-    dump "$buildDir/dump.txt"
+    dump "$buildDir/proguard/dump.txt"
 
     // 混淆规则文件
     configuration 'proguard-rules.pro'
@@ -135,17 +171,34 @@ task proguard(type: proguard.gradle.ProGuardTask, dependsOn: shadowJar) {
     // In this case, the input jar is the program library that we want to process.
 
 //    libraryjars configurations.implementation2.findAll()
-    libraryjars properties.getProperty("sdk.dir") + "/platforms/android-29/android.jar"
+//    libraryjars properties.getProperty("sdk.dir") + "/platforms/android-29/android.jar"
     println org.gradle.internal.jvm.Jvm.current().getJavaHome().getPath() +"/jre/lib/rt.jar"
 
     libraryjars org.gradle.internal.jvm.Jvm.current().getJavaHome().getPath() +"/jre/lib/rt.jar"
+    libraryjars org.gradle.internal.jvm.Jvm.current().getJavaHome().getPath() +"/jre/lib/jce.jar"
 
     // Save the obfuscation mapping to a file, so we can de-obfuscate any stack
     // traces later on. Keep a fixed source file attribute and all line number
     // tables to get line numbers in the stack traces.
     // You can comment this out if you're not interested in stack traces.
 
-    injars "${project.buildDir}/libs/logger-$project.publish_version-all.jar"
+    injars "${project.buildDir}/libs/mvstore-$project.publish_version-all.jar"
 
-    outjars "${project.buildDir}/libs/logger-$project.publish_version-mini.jar"
+    outjars "${project.buildDir}/libs/mvstore-$project.publish_version-mini.jar"
 }
+
+def copyReport = tasks.register('copyReport', Copy) {
+    from layout.projectDirectory.dir("proguard-rules.pro")
+    into layout.buildDirectory.dir("proguard")
+}
+
+def proguardDistribution = tasks.register('proguardDistribution', Zip) {
+    dependsOn copyReport,proguard
+    archiveFileName = "proguard.zip"
+    destinationDirectory = layout.buildDirectory.dir('dist')
+
+    from layout.buildDirectory.dir("proguard")
+}
+
+proguard.dependsOn prepareDirs
+tasks.findByName("publishMyPublicationPublicationToMavenRepository").dependsOn proguardDistribution
