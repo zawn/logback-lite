@@ -1,0 +1,151 @@
+buildscript {
+    repositories {
+        mavenLocal()
+        mavenCentral()
+        maven {
+            url "https://plugins.gradle.org/m2/"
+        }
+    }
+
+    dependencies {
+        classpath "com.github.jengelman.gradle.plugins:shadow:6.1.0"
+        // https://mvnrepository.com/artifact/net.sf.proguard/proguard-gradle
+        classpath 'net.sf.proguard:proguard-gradle:6.3.0beta1'
+
+    }
+}
+
+apply plugin: 'com.github.johnrengelman.shadow'
+apply plugin: 'java'
+apply plugin: 'maven-publish'
+
+group project.publish_group_id
+version project.publish_version
+
+
+publishing {
+    repositories {
+        maven {
+            url = "$buildDir/repos/"
+        }
+    }
+    publications {
+        MyPublication(MavenPublication) {
+            groupId = project.publish_group_id
+            artifactId = project.publish_artifact_id
+            artifact "${project.buildDir}/libs/logger-$project.publish_version-mini.jar"
+        }
+    }
+}
+
+
+sourceCompatibility = JavaVersion.VERSION_1_8
+targetCompatibility = JavaVersion.VERSION_1_8
+
+tasks.withType(JavaCompile) {
+    options.encoding = 'UTF-8'
+    options.compilerArgs << "-Xlint:unchecked" << "-Xlint:deprecation"
+}
+
+
+Properties properties = new Properties()
+properties.load(project.rootProject.file('local.properties').newDataInputStream())
+
+
+configurations {
+    shadow
+    compile.extendsFrom shadow
+//    providedRuntime
+//    mybatis
+//    mybatis.extendsFrom compile
+}
+
+shadowJar {
+//    relocate 'org.h2', 'com.appunity.repackage.org.h2'
+    configurations = [project.configurations.shadow]
+//    minimize()
+    exclude 'META-INF/maven/**'
+    exclude 'META-INF/services/**'
+    exclude 'META-INF/services/**'
+    exclude 'META-INF/DEPENDENCIES'
+    exclude 'META-INF/LICENSE'
+    exclude 'META-INF/LICENSE.txt'
+    exclude 'META-INF/license.txt'
+    exclude 'META-INF/NOTICE'
+    exclude 'META-INF/NOTICE.txt'
+    exclude 'META-INF/notice.txt'
+    exclude 'META-INF/ASL2.0'
+    exclude 'ch/qos/logback/classic/db/script/**'
+    exclude 'ch/qos/logback/classic/gaffer/**'
+    exclude 'ch/qos/logback/classic/jmx/**'
+    exclude 'ch/qos/logback/classic/servlet/**'
+    exclude 'ch/qos/logback/classic/selector/servlet/**'
+    exclude 'ch/qos/logback/classic/db/**'
+    exclude 'ch/qos/logback/core/db/**'
+    exclude 'ch/qos/logback/classic/net/**'
+    exclude 'ch/qos/logback/core/net/**'
+    exclude 'ch/qos/logback/classic/joran/**'
+    exclude 'ch/qos/logback/classic/BasicConfigurator.*'
+    exclude 'ch/qos/logback/classic/boolex/*.groovy'
+}
+
+dependencies {
+//    shadow "org.slf4j:slf4j-api:$slf4jVersion"
+
+    // https://mvnrepository.com/artifact/org.slf4j/slf4j-api
+//    shade "com.arcao:slf4j-timber:3.1"
+//    api 'com.github.tony19:logback-android:2.0.0'
+
+//    shadow "ch.qos.logback:logback-classic:1.2.3"
+    shadow "com.appunity:h2-mvstore:1.4.200"
+
+//    implementation2 'commons-codec:commons-codec:1.13'
+
+    // https://mvnrepository.com/artifact/com.google.android/android
+    compileOnly files(properties.getProperty("sdk.dir") + "/platforms/android-29/android.jar")
+}
+
+tasks.getByName("shadowJar").doLast {
+    File file = new File(project.buildDir, "libs/logger.jar")
+    file.delete()
+
+}
+
+task proguard(type: proguard.gradle.ProGuardTask, dependsOn: shadowJar) {
+
+
+    // 输出混淆前->混淆后的映射
+    printmapping "$buildDir/mapping.txt"
+    // 列出从 JAR 移除的代码。
+    printusage "$buildDir/usage.txt"
+    // 列出未进行混淆的类和成员。
+    printseeds "$buildDir/seeds.txt"
+    // 所有类文件的内部结构。
+    dump "$buildDir/dump.txt"
+
+    // 混淆规则文件
+    configuration 'proguard-rules.pro'
+
+    // You should probably import a more compact ProGuard-style configuration
+    // file for all static settings, but we're specifying them all here, for
+    // the sake of the example.
+    //configuration 'configuration.pro'
+
+    // Specify the input jars, output jars, and library jars.
+    // In this case, the input jar is the program library that we want to process.
+
+//    libraryjars configurations.implementation2.findAll()
+    libraryjars properties.getProperty("sdk.dir") + "/platforms/android-29/android.jar"
+    println org.gradle.internal.jvm.Jvm.current().getJavaHome().getPath() +"/jre/lib/rt.jar"
+
+    libraryjars org.gradle.internal.jvm.Jvm.current().getJavaHome().getPath() +"/jre/lib/rt.jar"
+
+    // Save the obfuscation mapping to a file, so we can de-obfuscate any stack
+    // traces later on. Keep a fixed source file attribute and all line number
+    // tables to get line numbers in the stack traces.
+    // You can comment this out if you're not interested in stack traces.
+
+    injars "${project.buildDir}/libs/logger-$project.publish_version-all.jar"
+
+    outjars "${project.buildDir}/libs/logger-$project.publish_version-mini.jar"
+}
